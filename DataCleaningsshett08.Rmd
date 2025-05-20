@@ -1,0 +1,389 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(readr)
+library(arrow)
+library(lubridate)
+```
+
+
+```{r}
+# Reading static_house_info.parquet
+static_house_data <- read_parquet("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/static_house_info.parquet")
+```
+
+```{r}
+str(static_house_data)
+```
+
+```{r}
+summary(static_house_data)
+```
+
+```{r}
+#Cleaning step 1
+# Check for missing values (NA) and empty strings in the entire DataFrame
+missing_empty_values <- apply(static_house_data, 2, function(col) sum(is.na(col) | nchar(col) == 0))
+
+# Identify columns with missing values or empty strings
+columns_with_missing_empty_values <- names(missing_empty_values[missing_empty_values > 0])
+
+# Display columns with missing values or empty strings, their data types, and respective counts
+if (length(columns_with_missing_empty_values) > 0) {
+  print("Columns with Missing Values (NA) or Empty Strings:")
+  for (col_name in columns_with_missing_empty_values) {
+    col_type <- typeof(static_house_data[[col_name]])
+    missing_count <- missing_empty_values[col_name]
+    print(paste("Column:", col_name, "| Data Type:", col_type, "| Missing Values Count:", missing_count))
+  }
+} else {
+  print("No columns have missing values (NA) or empty strings.")
+}
+```
+```{r}
+# List of columns with missing values or empty strings
+columns_to_drop <- c(
+  "upgrade.insulation_roof",
+  "upgrade.water_heater_efficiency",
+  "upgrade.infiltration_reduction",
+  "upgrade.geometry_foundation_type",
+  "upgrade.clothes_dryer",
+  "upgrade.insulation_ceiling",
+  "upgrade.ducts",
+  "upgrade.hvac_heating_type",
+  "upgrade.insulation_wall",
+  "upgrade.insulation_foundation_wall",
+  "upgrade.cooking_range"
+)
+
+# Drop columns from the DataFrame
+static_house_data <- static_house_data[, !(names(static_house_data) %in% columns_to_drop)]
+
+nrow(static_house_data)
+ncol(static_house_data)
+```
+
+```{r}
+# Remove duplicate rows
+static_house_info <- distinct(static_house_data)
+
+# Display the updated DataFrame without duplicates
+nrow(static_house_data)
+```
+
+
+```{r}
+#Cleaning step 2
+#Identify columns with "None" or "Not Applicable" values
+cols_with_none <- sapply(static_house_data, function(col) all(col %in% c("None", "Not Applicable")))
+
+# Display columns with only "None" or "Not Applicable" values
+names(static_house_data)[cols_with_none]
+```
+
+```{r}
+# Columns to drop
+columns_to_drop <- c(
+  "in.cec_climate_zone", "in.corridor", "in.dehumidifier", "in.electric_vehicle",
+  "in.geometry_building_horizontal_location_mf", "in.geometry_building_horizontal_location_sfa",
+  "in.geometry_building_level_mf", "in.geometry_building_number_units_mf",
+  "in.geometry_building_number_units_sfa", "in.hvac_has_shared_system",
+  "in.hvac_secondary_heating_efficiency", "in.hvac_secondary_heating_type_and_fuel",
+  "in.hvac_shared_efficiencies", "in.hvac_system_single_speed_ac_airflow",
+  "in.hvac_system_single_speed_ac_charge", "in.hvac_system_single_speed_ashp_airflow",
+  "in.hvac_system_single_speed_ashp_charge", "in.iso_rto_region",
+  "in.mechanical_ventilation", "in.overhangs", "in.solar_hot_water"
+)
+
+# Drop columns from the DataFrame
+static_house_data <- static_house_data[, !(names(static_house_data) %in% columns_to_drop)]
+ncol(static_house_data)
+nrow(static_house_data)
+```
+
+```{r}
+# Identify columns with the same value in all rows
+same_value_columns <- sapply(static_house_data, function(col) length(unique(col)) == 1)
+
+# Extract the names of columns with the same value in all rows
+columns_with_same_value <- names(same_value_columns[same_value_columns])
+columns_with_same_value
+```
+```{r}
+# Columns to drop
+columns_to_drop <- c(
+  "upgrade", "weight", "applicability", "in.ahs_region", "in.ashrae_iecc_climate_zone_2004",
+  "in.ashrae_iecc_climate_zone_2004_2_a_split", "in.census_division", "in.census_division_recs",
+  "in.census_region", "in.door_area", "in.doors", "in.eaves", "in.emissions_electricity_folders",
+  "in.emissions_electricity_units", "in.emissions_electricity_values_or_filepaths",
+  "in.emissions_fossil_fuel_units", "in.emissions_fuel_oil_values", "in.emissions_natural_gas_values",
+  "in.emissions_propane_values", "in.emissions_scenario_names", "in.emissions_types",
+  "in.emissions_wood_values", "in.generation_and_emissions_assessment_region",
+  "in.geometry_building_type_acs", "in.geometry_building_type_height", "in.geometry_building_type_recs",
+  "in.geometry_story_bin", "in.holiday_lighting", "in.hot_water_distribution", "in.hvac_system_is_faulted",
+  "in.interior_shading", "in.lighting_interior_use", "in.lighting_other_use", "in.location_region",
+  "in.natural_ventilation", "in.neighbors", "in.plug_loads", "in.radiant_barrier", "in.schedules",
+  "in.simulation_control_run_period_begin_day_of_month", "in.simulation_control_run_period_begin_month",
+  "in.simulation_control_run_period_calendar_year", "in.simulation_control_run_period_end_day_of_month",
+  "in.simulation_control_run_period_end_month", "in.simulation_control_timestep", "in.state",
+  "in.units_represented", "in.water_heater_in_unit", "upgrade.hvac_cooling_efficiency"
+)
+
+# Drop columns from the DataFrame
+static_house_data <- static_house_data[, !(names(static_house_data) %in% columns_to_drop)]
+
+ncol(static_house_data)
+```
+
+```{r}
+# List the names of columns in static_house_data
+column_names <- names(static_house_data)
+column_names
+
+```
+
+```{r}
+# Dropping columns which are irrelevant
+columns_to_drop <- c(
+  "in.tenure", "in.puma_metro_status", "in.orientation", "in.water_heater_efficiency",
+  "upgrade.hvac_heating_efficiency", "in.federal_poverty_level", "in.income",
+  "in.income_recs_2015", "in.income_recs_2020"
+)
+
+# Drop columns from the DataFrame
+static_house_data <- static_house_data[, !(names(static_house_data) %in% columns_to_drop)]
+ncol(static_house_data)
+```
+
+```{r}
+# Columns to modify
+columns_to_modify <- c(
+  "in.cooling_setpoint", "in.cooling_setpoint_offset_magnitude", "in.cooling_setpoint_offset_period",
+  "in.heating_setpoint", "in.heating_setpoint_offset_magnitude", "in.heating_setpoint_offset_period"
+)
+
+# Remove the suffix "F" from the specified columns in the static_house_data dataframe
+for (col in columns_to_modify) {
+  static_house_data[[col]] <- gsub("F$", "", static_house_data[[col]])
+}
+
+# Display the updated dataframe
+print(static_house_data)
+
+```
+
+
+```{r}
+write_csv(static_house_data, "/Users/divya/Downloads/IDSFinalProject/static_house_data.csv")
+```
+
+
+```{r}
+# Load the CSV file
+# Specify the correct file path
+file_path <- "C:/Users/divya/Downloads/WeatherData.csv"
+
+# Read the CSV file into a data frame
+weather_data <- read.csv(file_path)
+
+# Display the first few rows of the data
+head(weather_data)
+
+
+```
+
+```{r}
+# rename 'date_time' to 'time'
+weather_data$time <- weather_data$date_time
+weather_data <- subset(weather_data, select = -date_time)
+
+# Convert 'time' column to POSIXct format
+weather_data$time <- as.POSIXct(weather_data$time)
+```
+
+```{r}
+str(weather_data)
+```
+```{r}
+summary(weather_data)
+```
+
+```{r}
+# Function to detect outliers using IQR method for each column
+find_outliers <- function(column) {
+  q1 <- quantile(column, 0.25)
+  q3 <- quantile(column, 0.75)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  outliers <- column < lower_bound | column > upper_bound
+  return(outliers)
+}
+
+# Get only numeric columns
+numeric_columns <- weather_data[, sapply(weather_data, is.numeric)]
+
+# Empty list to store columns with outliers
+columns_with_outliers <- list()
+
+# Loop through each numeric column and identify outliers
+for (col in names(numeric_columns)) {
+  outliers <- find_outliers(numeric_columns[[col]])
+  if (any(outliers)) {
+    columns_with_outliers[[col]] <- which(outliers)
+  }
+}
+
+# Filter out columns without outliers
+columns_with_outliers <- columns_with_outliers[sapply(columns_with_outliers, length) > 0]
+
+# Display columns with outliers
+print(names(columns_with_outliers))
+```
+
+```{r}
+# Assuming your data frame is named 'weather_data'
+# Creating boxplots for the specified variables
+
+par(mfrow = c(2, 2))  # Setting up a grid for multiple plots
+
+# Boxplot for Dry Bulb Temperature
+boxplot(weather_data$`Dry.Bulb.Temperature...C.`,
+        main = "Boxplot of Dry Bulb Temperature",
+        ylab = "Temperature (°C)")
+
+# Boxplot for Relative Humidity
+boxplot(weather_data$`Relative.Humidity....`,
+        main = "Boxplot of Relative Humidity",
+        ylab = "Relative Humidity (%)")
+
+# Boxplot for Wind Speed
+boxplot(weather_data$`Wind.Speed..m.s.`,
+        main = "Boxplot of Wind Speed",
+        ylab = "Wind Speed (m/s)")
+
+# Boxplot for Diffuse Horizontal Radiation
+boxplot(weather_data$`Diffuse.Horizontal.Radiation..W.m2.`,
+        main = "Boxplot of Diffuse Horizontal Radiation",
+        ylab = "Radiation (W/m2)")
+
+par(mfrow = c(1, 1))  # Resetting plotting settings
+
+
+```
+
+```{r}
+# Function to identify and fix outliers using IQR method
+fix_outliers <- function(data, column_name) {
+  q1 <- quantile(data[[column_name]], 0.25)
+  q3 <- quantile(data[[column_name]], 0.75)
+  iqr <- q3 - q1
+  
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  
+  outliers <- data[[column_name]] < lower_bound | data[[column_name]] > upper_bound
+  
+  # Replace outliers with NA
+  data[outliers, column_name] <- NA
+  
+  return(data)
+}
+
+# Applying the fix_outliers function to the specified columns
+columns_to_fix <- c("Dry.Bulb.Temperature...C.", "Relative.Humidity....", "Wind.Speed..m.s.", "Diffuse.Horizontal.Radiation..W.m2.")
+
+for (column in columns_to_fix) {
+ weather_data <- fix_outliers(weather_data, column)
+}
+
+# Creating boxplots after fixing outliers
+par(mfrow = c(2, 2))  # Setting up a grid for multiple plots
+
+# Boxplot for Dry Bulb Temperature
+boxplot(weather_data$`Dry.Bulb.Temperature...C.`,
+        main = "Boxplot of Dry Bulb Temperature (Fixed)",
+        ylab = "Temperature (°C)")
+
+# Boxplot for Relative Humidity
+boxplot(weather_data$`Relative.Humidity....`,
+        main = "Boxplot of Relative Humidity (Fixed)",
+        ylab = "Relative Humidity (%)")
+
+# Boxplot for Wind Speed
+boxplot(weather_data$`Wind.Speed..m.s.`,
+        main = "Boxplot of Wind Speed (Fixed)",
+        ylab = "Wind Speed (m/s)")
+
+# Boxplot for Diffuse Horizontal Radiation
+boxplot(weather_data$`Diffuse.Horizontal.Radiation..W.m2.`,
+        main = "Boxplot of Diffuse Horizontal Radiation (Fixed)",
+        ylab = "Radiation (W/m2)")
+
+par(mfrow = c(1, 1))  # Resetting plotting settings
+
+
+```
+
+```{r}
+str(weather_data)
+```
+```{r}
+weather_data
+```
+
+```{r}
+write_csv(weather_data, "C:/Users/divya/Downloads/IDSFinalProject/weather_data.csv")
+```
+
+```{r}
+# Load the CSV file
+
+file_path <- "C:/Users/divya/Downloads/EnergyUsageData.csv"
+energy_usage_data <- read.csv(file_path)
+head(energy_usage_data)
+nrow(energy_usage_data)
+```
+
+```{r}
+# Check the structure of the data
+str(energy_usage_data)
+```
+
+
+```{r}
+# Summary statistics
+summary(energy_usage_data)
+
+```
+```{r}
+# Convert 'time' column to POSIXct format
+energy_usage_data$time <- as.POSIXct(energy_usage_data$time)
+
+# Filter the data for the month of July
+energy_usage_data_july <- subset(energy_usage_data, substr(energy_usage_data$time, 6, 7) == "07")
+
+# Add a new column 'total_energy_usage'
+energy_usage_data_july$total_energy_usage <- rowSums(energy_usage_data_july[, grepl("energy_consumption", names(energy_usage_data_july))])
+
+# Remove rows with negative total_energy_usage
+energy_usage_data_july <- subset(energy_usage_data_july, total_energy_usage >= 0)
+
+# Group by building and date and calculate the total energy usage
+energy_usage_data <- aggregate(total_energy_usage ~ bldg_id + time, data = energy_usage_data_july, FUN = sum)
+
+```
+
+
+```{r}
+write_csv(energy_usage_data, "C:/Users/divya/Downloads/IDSFinalProject/energy_usage_data.csv")
+energy_usage_data
+```
+
+
+
+

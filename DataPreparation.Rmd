@@ -1,0 +1,76 @@
+q---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+# Load libraries
+library(dplyr)
+library(readr)
+library(arrow)
+library(lubridate)
+library(future.apply)
+```
+
+
+```{r}
+# Read static house info and write to CSV
+parquet_url <- "https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/static_house_info.parquet"
+static_house_data <- read_parquet(parquet_url)
+```
+
+
+```{r}
+# Extract unique building IDs
+unique_bldg_ids <- unique(static_house_data$bldg_id)
+
+# Define chunk size
+chunk_size <- 100
+
+# Function to process data for a chunk of building IDs
+process_chunk <- function(chunk_ids) {
+  lapply(chunk_ids, function(bldg_id) {
+    link <- sprintf("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/2023-houseData/%s.parquet", bldg_id)
+    temp_df <- read_parquet(link) %>% filter(month(time) == 7) %>% mutate(bldg_id = bldg_id)
+  })
+}
+
+# Split unique building IDs into chunks
+chunks <- split(unique_bldg_ids, ceiling(seq_along(unique_bldg_ids) / chunk_size))
+
+# Process data in chunks using parallel processing
+plan(multisession)
+all_data <- future_lapply(chunks, process_chunk)
+all_data_combined <- bind_rows(do.call(c, all_data))
+
+# Write combined energy data to CSV
+write_csv(all_data_combined, "C:/Users/divya/Downloads/IDSFinalProject/EnergyUsageData.csv")
+```
+
+
+```{r}
+# Extract unique county names
+county_names <- unique(static_house_data$in.county)
+
+# Initialize a list to store weather dataframes
+all_weather_data <- list()
+
+# Loop through each county and read weather data
+for (county_name in county_names) {
+  link <- sprintf("https://intro-datascience.s3.us-east-2.amazonaws.com/SC-data/weather/2023-weather-data/%s.csv", county_name)
+  temp_df <- read_csv(link) %>% filter(month(date_time) == 7) %>% mutate(in.county = county_name)
+  all_weather_data[[county_name]] <- temp_df
+}
+
+# Combine weather dataframes into a single dataframe
+weather_data <- bind_rows(all_weather_data)
+
+# Print head of combined weather data
+head(weather_data)
+
+# Write combined weather data to CSV
+write_csv(weather_data, "/Users/vrushalilad/Desktop/IDS Project/WeatherData.csv")
+
+```
+

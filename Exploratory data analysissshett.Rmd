@@ -1,0 +1,550 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(ggplot2)
+library(maps)
+library(dplyr)
+#install.packages("cowplot")
+library(cowplot)
+library(lubridate)
+```
+
+
+```{r}
+energy_data <-read.csv("C:/Users/divya/Downloads/IDSFinalProject/energy_static_weather_data.csv")
+print(energy_data)
+```
+
+```{r}
+# Display the structure of the dataframe
+str(energy_data)
+```
+
+
+```{r}
+# Summary statistics
+summary(energy_data)
+```
+
+
+```{r}
+# Distribution of the target variable (total_energy_usage)
+ggplot(energy_data, aes(x = total_energy_usage)) +
+  geom_histogram(binwidth = 5, fill = "blue", color = "black") +
+  labs(title = "Distribution of total_energy_usage")
+```
+```{r}
+# Convert time column to datetime if needed
+energy_data$time <- as.POSIXct(energy_data$time) 
+
+# Group by time and calculate total energy consumption
+energy_data <- aggregate(total_energy_usage ~ time, data = energy_data, sum)
+
+# Create the plot
+library(ggplot2)
+
+ggplot(energy_data, aes(x = time, y = total_energy_usage)) +
+  geom_line(color = "#0077FF", size = 2) +
+  labs(x = "Date", y = "Total Energy Consumed (kWh)",
+       title = "Total Energy Consumed by eSC Customers in July 2018") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the plot as an image file
+ggsave("energy_consumption_over_time.png", width = 10, height = 6, dpi = 300)
+
+
+```
+
+```{r}
+# Convert time column to datetime if needed
+energy_data$time <- as.POSIXct(energy_data$time) 
+
+# Group by time and calculate total energy consumption
+energy_data <- aggregate(total_energy_usage ~ time, data = energy_data, sum)
+
+# Create the plot
+energy_plot <- ggplot(energy_data, aes(x = time, y = total_energy_usage)) +
+  geom_line(color = "#0077FF", size = 1) + # Adjust size as needed
+  labs(x = "Date", y = "Total Energy Consumed (kWh)",
+       title = "Total Energy Consumed by eSC Customers in July 2019") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the plot as a PNG image
+ggsave("energy_consumption_over_time.png", plot = energy_plot,
+       width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# Scatter plot of total_energy_usage against in.sqft
+ggplot(energy_data, aes(x = in.sqft, y = total_energy_usage)) +
+  geom_point() +
+  labs(title = "Scatter Plot of total_energy_usage against in.sqft", x = "in.sqft", y = "total_energy_usage")
+```
+
+
+```{r}
+ggplot(total_energy_by_county, aes(x = reorder(in.county, -total_energy), y = total_energy)) +
+  geom_col(fill = "steelblue", color = "darkblue") +  # Use geom_col for simplicity
+  labs(
+    title = "Total Energy Usage by County",
+    subtitle = "Data grouped and summarized by county",
+    x = "County",
+    y = "Total Energy Usage"
+  ) +
+  theme_minimal() +  # Minimal theme for clean visuals
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5),  # Center-align title
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+
+```
+
+```{r}
+ggplot(energy_data, aes(x = Dry.Bulb.Temperature...C.)) +
+  geom_density(
+    fill = "lightblue",  # Updated fill color for better visibility
+    color = "darkblue",  # Updated border color for contrast
+    alpha = 0.7          # Transparency for a softer appearance
+  ) +
+  labs(
+    title = "Distribution of Dry Bulb Temperature",
+    subtitle = "Density plot of temperature data in Celsius",
+    x = "Temperature (Celsius)",
+    y = "Density"
+  ) +
+  theme_classic() +  # Classic theme for a clean look
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Center-align title
+    plot.subtitle = element_text(hjust = 0.5)  # Center-align subtitle
+  )
+```
+
+
+```{r}
+# Summarizing data for in.refrigerator
+refrigerator_summary <- energy_data %>%
+  count(in.refrigerator) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Plotting pie chart for in.refrigerator
+ggplot(refrigerator_summary, aes(x = "", y = percentage, fill = in.refrigerator)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(title = "Percentage of Refrigerator Types rated Efficiency ", fill = "Refrigerator Type") +
+  scale_fill_brewer(palette = "Set3") +  # Choosing a color palette
+  theme_minimal() +  # Adjusting the theme
+  theme(legend.position = "right")  # Moving the legend to the right
+
+```
+
+```{r}
+# Count occurrences of each unique value in 'in.dishwasher'
+dishwasher_counts <- table(energy_data$in.dishwasher)
+
+# Convert counts to a data frame and rename columns
+dishwasher_data <- as.data.frame(dishwasher_counts)
+colnames(dishwasher_data) <- c("Dishwasher_Type", "Count")
+
+# Create a bar plot with additional features
+ggplot(dishwasher_data, aes(x = reorder(Dishwasher_Type, -Count), y = Count, fill = Dishwasher_Type)) +
+  geom_col(color = "black", width = 0.7) +  # Use geom_col and adjust bar width
+  labs(
+    title = "Distribution of Dishwasher Types and Usage",
+    subtitle = "Visualizing the count of each dishwasher type",
+    x = "Dishwasher Types",
+    y = "Count"
+  ) +
+  scale_fill_brewer(palette = "Set2") +  # Use a color palette for better visuals
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    plot.title = element_text(hjust = 0.5),  # Center-align title
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "none"  # Hide legend as the fill is self-explanatory
+  )
+
+```
+
+```{r}
+# Frequency of bedrooms in the buildings
+# Use 'in.bedrooms' column for plotting
+bedroom_counts <- table(energy_data$in.bedrooms)
+
+# Convert the table to a data frame for plotting
+bedroom_df <- data.frame(Bedrooms = as.integer(names(bedroom_counts)), Frequency = as.numeric(bedroom_counts))
+
+# Plotting the bar chart with enhancements
+ggplot(bedroom_df, aes(x = factor(Bedrooms), y = Frequency, fill = factor(Bedrooms))) +
+  geom_bar(stat = "identity", color = "black", width = 0.7) +  # Adjust bar width and color
+  labs(
+    title = "Frequency of Bedrooms in Buildings",
+    subtitle = "Bar chart showing the distribution of bedroom counts",
+    x = "Number of Bedrooms",
+    y = "Frequency"
+  ) +
+  scale_fill_brewer(palette = "Set3") +  # Apply a different color palette
+  theme_light() +  # Use a light theme for a clean background
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels for clarity
+    plot.title = element_text(hjust = 0.5),  # Center-align title
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "none"  # Hide legend since the fill color is self-explanatory
+  )
+
+
+
+```
+
+
+```{r}
+# Percentage of buildings with duct leakage
+# Create new colors for the bars
+my_colors <- c("#2ecc71", "#f39c12")  # Green for Insulated, Yellow for Uninsulated
+
+# Create a new column categorizing duct leakage as Insulated/Uninsulated
+energy_data$leakage_category <- ifelse(grepl("Uninsulated", energy_data$in.ducts), "Uninsulated", "Insulated")
+
+# Calculate counts for each category
+leakage_counts <- table(energy_data$leakage_category)
+leakage_percentages <- prop.table(leakage_counts) * 100
+
+# Create the barplot with adjusted aesthetics
+barplot(
+  leakage_counts,
+  main = "Count of Buildings by Duct Leakage",
+  xlab = "Duct Leakage",
+  ylab = "Number of Buildings",
+  col = my_colors,
+  border = "white", # Adding white borders for better separation
+  beside = TRUE
+)
+
+# Add labels for the legend
+legend("topright", legend = c("Insulated", "Uninsulated"), fill = my_colors)
+
+# Calculate the position for placing percentages on bars
+bar_positions <- barplot(leakage_counts, plot = FALSE)
+text(
+  x = bar_positions,
+  y = leakage_counts + max(leakage_counts) * 0.05,
+  labels = paste0(round(leakage_percentages), "%"),
+  col = "black",
+  cex = 1.2 # Adjust text size for better readability
+)
+
+
+
+```
+
+
+```{r}
+#Percentage of building by material
+# Create a function to map specific materials to broader categories
+get_material_category <- function(material) {
+  if (grepl("Aluminum", material)) {
+    return("Metal")
+  } else if (grepl("Brick", material)) {
+    return("Brick")
+  } else if (grepl("Fiber-Cement|Shingle|Stucco", material)) {
+    return("Composite")
+  } else if (grepl("Vinyl", material)) {
+    return("Plastic")
+  } else if (grepl("Wood", material)) {
+    return("Wood")
+  } else {
+    return("Other")
+  }
+}
+
+# Applying the function to create a new column with broader material categories
+energy_data$material_category <- sapply(energy_data$in.geometry_wall_exterior_finish, get_material_category)
+
+# Plotting the graph
+library(ggplot2)
+
+# Calculating percentage of buildings per material category
+material_percentage <- prop.table(table(energy_data$material_category)) * 100
+
+# Plotting the graph with percentage labels on bars
+ggplot(energy_data, aes(x = factor(material_category), fill = material_category)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = paste0(round((..count../sum(..count..)) * 100), "%")), vjust = -0.5) +
+  labs(x = "Material Category", y = "Percentage of Buildings", title = "Percentage of Buildings by Material Category") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+
+
+```{r}
+
+# Categorize HVAC cooling efficiency
+energy_data <- energy_data %>%
+  mutate(hvac_efficiency_category = case_when(
+    in.hvac_cooling_efficiency %in% c("AC, SEER 10", "Room AC, EER 10.7", "Room AC, EER 9.8") ~ "Moderately Efficient",
+  in.hvac_cooling_efficiency %in% c("AC, SEER 13") ~ "Efficient",
+  in.hvac_cooling_efficiency %in% c("AC, SEER 15", "Heat Pump", "Room AC, EER 12.0") ~ "Very Efficient",
+  in.hvac_cooling_efficiency %in% c("Shared Cooling", "Room AC, EER 8.5", "None", "AC, SEER 8") ~ "Inefficient",
+  TRUE ~ "Other"
+  ))
+
+
+# Group by bldg_id and calculate total energy usage
+building_energy_summary <- energy_data %>%
+  group_by(bldg_id) %>%
+  summarise(
+    total_energy_usage = sum(total_energy_usage),
+    hvac_efficiency_category = first(hvac_efficiency_category)
+  ) %>%
+  filter(total_energy_usage >= 0)  # Remove rows with negative total_energy_usage
+
+# Counting buildings and calculating total energy saved for each HVAC efficiency category
+efficiency_summary <- building_energy_summary %>%
+  group_by(hvac_efficiency_category) %>%
+  summarise(
+    count_buildings = n_distinct(bldg_id),
+    total_energy_saved_MWh = sum(ifelse(total_energy_usage < median(total_energy_usage),
+                                        median(total_energy_usage) - total_energy_usage, 0)) / 1000
+  )
+
+# Display the summary
+efficiency_summary[, c("hvac_efficiency_category", "count_buildings", "total_energy_saved_MWh")]
+
+```
+```{r}
+library(knitr)
+library(kableExtra)
+
+efficiency_categories <- c(
+  "Very Efficient" = "AC, SEER 15 | Heat Pump | Room AC, EER 12.0",
+  "Moderately Efficient" = "AC, SEER 10 | Room AC, EER 10.7 | Room AC, EER 9.8",
+  "Efficient" = "AC, SEER 13",
+  "Inefficient" = "Shared Cooling | Room AC, EER 8.5 | None | AC, SEER 8"
+)
+
+data <- data.frame(
+  hvac_efficiency_category = names(efficiency_categories),
+  hvac_efficiency_values = unname(efficiency_categories)
+)
+
+# Create the table using kable
+table <- kable(data, "html") %>%
+  kable_styling("striped")
+
+# Display the table
+table
+
+
+
+```
+
+```{r}
+# Total energy saved per HVAC system
+# Define a new custom color palette
+custom_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c")  # Blue, Orange, Green
+
+# Plotting the energy saved and building count
+ggplot(efficiency_summary, aes(x = reorder(hvac_efficiency_category, -total_energy_saved_MWh), 
+                               y = total_energy_saved_MWh, 
+                               label = round(total_energy_saved_MWh, 2))) +
+  geom_bar(stat = "identity", fill = custom_colors[1], alpha = 0.8, width = 0.6) +  # Increased bar width
+  geom_text(aes(label = count_buildings), 
+            position = position_dodge(width = 0.6), vjust = 0.1, 
+            size = 4, color = "darkred") +  # Changed text color to darkred
+  labs(x = "HVAC Efficiency Category", y = "Total Energy Saved (MWh)",
+       title = "Total Energy Saved per HVAC Efficiency Category\nwith Building Count") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black"),
+    axis.text.y = element_text(size = 10)
+  )
+
+```
+
+```{r}
+
+energy_usage_data <- read.csv("C:/Users/divya/Downloads/IDSFinalProject/EnergyUsageData.csv")
+```
+
+```{r}
+
+# Summing columns except 'time' to get total energy usage
+energy_usage_data$total_energy_usage <- rowSums(energy_usage_data[, -which(names(energy_usage_data) == "time")], na.rm = TRUE)
+
+# Writing the updated dataframe back to a CSV file if needed
+write.csv(energy_usage_data, "C:/Users/divya/Downloads/IDSFinalProject/UpdatedEnergyUsageData.csv", row.names = FALSE)
+
+```
+
+```{r}
+# Calculate total energy usage per appliance for summer months
+appliance_summer <- energy_usage_data %>%
+  group_by(appliance = case_when(
+    out.electricity.ceiling_fan.energy_consumption > 0 ~ "Ceiling Fan",
+    out.electricity.clothes_dryer.energy_consumption > 0 ~ "Clothes Dryer",
+    out.electricity.clothes_washer.energy_consumption > 0 ~ "Clothes Washer",
+    out.electricity.cooling_fans_pumps.energy_consumption > 0 ~ "Cooling Fans/Pumps",
+    out.electricity.clothes_dryer.energy_consumption > 0 ~ "Clothes Dryer",
+    out.electricity.pool_heater.energy_consumption > 0 ~ "Pool Heater",
+    out.electricity.hot_tub_heater.energy_consumption > 0 ~ "Hot Tub Heater",
+  out.electricity.cooling.energy_consumption > 0 ~ "Cooling",
+  out.electricity.refrigerator.energy_consumption > 0 ~ "Refrigerator",
+ out.electricity.dishwasher.energy_consumption > 0 ~  "Dishwasher",
+  out.electricity.plug_loads.energy_consumption > 0 ~ "Plug Loads",
+  out.electricity.clothes_washer.energy_consumption > 0 ~ "Clothes Washer",
+  out.electricity.freezer.energy_consumption > 0 ~ "Freezer" ,
+  out.electricity.hot_water.energy_consumption > 0 ~ "Hot Water",
+  out.electricity.well_pump.energy_consumption > 0 ~ "Well Pump",
+  
+    TRUE ~ "Other"
+  )) %>%
+  summarise(total_energy = sum(total_energy_usage))
+
+# Get the top 10 most used appliances during summer
+top_10_appliances <- head(arrange(appliance_summer, desc(total_energy)), )
+
+# Filter data for the top 10 appliances
+top_10_appliances_data <- appliance_summer %>%
+  filter(appliance %in% top_10_appliances$appliance) %>%
+  select(appliance, total_energy)
+
+# Rename the columns to appliance names
+colnames(top_10_appliances_data)[1] <- "Appliance Name"
+
+# Display the top 10 appliances used during summer and their respective energy usage
+top_10_appliances_data
+
+```
+
+```{r}
+#Top appliances by energy usage 
+# Convert total energy usage to megawatt-hours
+top_10_appliances_data$total_energy_MWh <- top_10_appliances_data$total_energy / 1000
+
+# Plotting top appliances by energy usage with updated color scheme
+ggplot(top_10_appliances_data, aes(x = reorder(`Appliance Name`, total_energy_MWh), 
+                                   y = total_energy_MWh, fill = `Appliance Name`)) +
+  geom_bar(stat = "identity", color = "black", width = 0.6) +  # Adjust width and add black borders
+  labs(
+    x = "Appliance", 
+    y = "Total Energy Usage (MWh)", 
+    title = "Top Appliances by Energy Usage in Summer"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.position = "none",  # Hide legend as the color fill is self-explanatory
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),  # Adjust axis line color
+    axis.ticks = element_line(color = "black")  # Adjust ticks color
+  ) +
+  geom_text(aes(label = round(total_energy_MWh, 2)), vjust = -0.5, size = 3, color = "darkred") +  # Red text for labels
+  scale_fill_brewer(palette = "Set3")  # Use a distinct color palette from RColorBrewer
+
+
+
+```
+
+
+```{r}
+# County-wise energy consumption over time
+# Convert 'time' column to Date format if it's not already in Date format
+energy_data$time <- as.Date(energy_data$time)
+
+# Aggregate energy consumption by county and time
+agg_energy <- energy_data %>%
+  group_by(in.county, time) %>%
+  summarise(total_energy = sum(total_energy_usage))
+
+# Create a line plot for county-wise energy consumption over time
+ggplot(agg_energy, aes(x = time, y = total_energy, color = in.county)) +
+  geom_line(size = 1.2) +  # Increased line thickness
+  labs(
+    title = "County-wise Energy Consumption Over Time",
+    x = "Time",
+    y = "Total Energy Consumption",
+    color = "County"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.position = "top",  # Move the legend to the top
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black")
+  ) +
+  scale_color_brewer(palette = "Dark2")  # Use Dark2 color palette for better differentiation
+
+# Aggregate temperature data for max and min temperatures over time
+agg_temp <- energy_data %>%
+  group_by(time) %>%
+  summarise(
+    max_temp = max(`Dry.Bulb.Temperature...C.`),
+    min_temp = min(`Dry.Bulb.Temperature...C.`)
+  )
+
+# Create a line plot for max and min temperatures over time
+ggplot(agg_temp, aes(x = time)) +
+  geom_line(aes(y = max_temp, color = "Max Temperature"), size = 1.2) +  # Increased line thickness
+  geom_line(aes(y = min_temp, color = "Min Temperature"), size = 1.2) +
+  labs(
+    title = "Maximum and Minimum Temperatures Over Time",
+    x = "Time",
+    y = "Temperature (°C)",
+    color = "Temperature"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.position = "top",  # Move the legend to the top
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "white"),
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black")
+  ) +
+  scale_color_manual(values = c("Max Temperature" = "#E41A1C", "Min Temperature" = "#377EB8"))  # Custom colors for max and min temperatures
+
+
+```
+
+
+
+
+
+
+
+
+
+

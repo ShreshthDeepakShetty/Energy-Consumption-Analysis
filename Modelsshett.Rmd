@@ -1,0 +1,126 @@
+---
+title: "Model"
+output: html_document
+date: "2023-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+```
+
+
+```{r}
+# Load your data
+data <- read.csv("C:/Users/divya/Downloads/IDSFinalProject/energy_static_weather_data.csv")
+
+# Splitting the data into training and test sets
+set.seed(123) # for reproducibility
+train_indices <- sample(1:nrow(data), 0.8 * nrow(data))
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Building the linear regression model
+# Including only the selected variables
+model <- lm(total_energy_usage ~ 
+                                in.cooling_setpoint + 
+                                in.heating_setpoint + 
+                                in.bedrooms +
+                                in.sqft + time + Dry.Bulb.Temperature...C., data = train_data)
+
+# Summary of the model
+summary(model)
+
+# Predicting on the test set
+predictions <- predict(model, test_data)
+
+# Evaluating the model
+mse <- mean((predictions - test_data$total_energy_usage)^2)
+mse
+```
+
+```{r}
+# Load the required library
+library(rpart)
+
+# Building the Decision Tree regression model
+model_dt <- rpart(total_energy_usage ~ 
+                   in.cooling_setpoint + 
+                   in.heating_setpoint + 
+                   in.bedrooms +
+                   in.sqft + time + Dry.Bulb.Temperature...C., data = train_data)
+
+# Summary of the Decision Tree model
+summary(model_dt)
+
+# Predicting on the test set
+predictions_dt <- predict(model_dt, test_data)
+
+# Evaluating the Decision Tree model
+mse_dt <- mean((predictions_dt - test_data$total_energy_usage)^2)
+mse_dt
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+# Calculate total sum of squares (TSS)
+mean_energy <- mean(train_data$total_energy_usage)
+TSS <- sum((test_data$total_energy_usage - mean_energy)^2)
+
+# Calculate predicted sum of squares (PRESS)
+predictions_dt <- predict(model_dt, test_data)
+PRESS <- sum((test_data$total_energy_usage - predictions_dt)^2)
+
+# Calculate RPE
+RPE <- 1 - (PRESS / TSS)
+RPE
+
+```
+
+
+```{r}
+# Load your data
+data <- read.csv("C:/Users/divya/Downloads/IDSFinalProject/energy_static_weather_data.csv")
+data$time <- as.POSIXct(data$time)
+
+# Filter data for July 2018 and July 2019
+data_2018 <- subset(data, format(data$time, "%Y-%m") == "2018-07")
+data_2019 <- subset(data, format(data$time, "%Y-%m") == "2019-07")
+
+# Building the linear regression model for July 2018
+# Including only the selected variables
+model <- lm(total_energy_usage ~ 
+              in.cooling_setpoint + 
+              in.heating_setpoint + 
+              in.bedrooms +
+              in.sqft + time + Dry.Bulb.Temperature...C., data = data_2018)
+
+# Predict future energy usage for July 2019 using the trained linear regression model for July 2018
+future_dates_2019 <- seq(from = as.POSIXct("2019-07-01"), by = "day", length.out = 31)
+future_data_2019 <- data.frame(
+  time = future_dates_2019,
+  in.cooling_setpoint = rep(mean(data_2018$in.cooling_setpoint), 31),
+  in.heating_setpoint = rep(mean(data_2018$in.heating_setpoint), 31),
+  in.bedrooms = rep(mean(data_2018$in.bedrooms), 31),
+  in.sqft = rep(mean(data_2018$in.sqft), 31),
+  Dry.Bulb.Temperature...C. = rep(mean(data_2018$Dry.Bulb.Temperature...C.), 31)
+)
+predicted_energy_2019 <- predict(model, newdata = future_data_2019)
+future_data_2019$predicted_energy <- predicted_energy_2019
+
+# Aggregate predicted energy usage for July 2019
+aggregated_future_data_2019 <- aggregate(predicted_energy ~ time, data = future_data_2019, FUN = max)
+
+# Merge data for July 2018 and predicted July 2019
+merged_data <- merge(data_2018, aggregated_future_data_2019, by = "time", all = TRUE)
+```
+
+
+
+
