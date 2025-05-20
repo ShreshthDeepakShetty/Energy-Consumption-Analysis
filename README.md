@@ -16,10 +16,7 @@ Dependencies
 - **R Packages**:
   - `tidyverse`
   - `shiny`
-  - `leaflet`
-  - `rpart`
-  - `caret`
-  - `xgboost` *(optional for advanced modeling)*
+  
 
 ### 📦 Installation
 No installation is required to access the core features. The interactive visualizations and forecasting models can be explored through our hosted **Shiny App**:  
